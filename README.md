@@ -147,3 +147,23 @@ example :
     git commit -m "Update .gitignore to exclude serviceAccountKey.json"
 
     git push -u origin <branch_name>
+
+
+### Connect newly created git repositoty to local existed project
+
+    git init
+    git status      #optional
+    git add .
+    git commit -m "first commit"
+    git remote add origin <repo_name>
+    git push -u origin master                   #by default master
+
+if want to change branch before add files, need to follow this
+    
+    git init
+    git status    #optional
+    git remote add origin <repo_name>
+    git checkout -b <branch_name>       #your desired branch
+    git add .
+    git commit -m "first commit"
+    git push -u origin <branch_name>
