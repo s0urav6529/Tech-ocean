@@ -1,0 +1,58 @@
+services:
+  # ── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: otp_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"               # Expose to host for local debugging
+    volumes:
+      - redis_data:/data           # Persist Redis data across restarts
+    command: redis-server --appendonly yes --save 60 1
+    #   --appendonly yes  → enable AOF persistence
+    #   --save 60 1       → RDB snapshot every 60s if ≥1 key changed
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - otp_network
+
+  # ── Backend API ────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: otp_api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    # Load ALL vars from .env, then selectively override what differs in Docker
+    env_file:
+      - .env
+    environment:
+      # Override REDIS_HOST so it resolves to the Docker service name, not 'localhost'
+      REDIS_HOST: redis
+    depends_on:
+      redis:
+        condition: service_healthy   # Wait for Redis healthcheck to pass
+    networks:
+      - otp_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# ── Volumes ────────────────────────────────────────────────────────────────
+volumes:
+  redis_data:
+    driver: local
+
+# ── Networks ───────────────────────────────────────────────────────────────
+networks:
+  otp_network:
+    driver: bridge
